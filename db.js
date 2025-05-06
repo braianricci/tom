@@ -27,4 +27,27 @@ db.serialize(() => {
     `);
 });
 
+db.run(`
+  INSERT INTO tickets (chatId, userNumber, agent, username, title)
+  VALUES (?, ?, ?, ?, ?)
+`, ['abc123', '+1234567890', 'Agent007', 'John Doe', 'Issue with invoice upload'], function (err) {
+    if (err) return console.error(err.message);
+
+    const ticketId = this.lastID;
+
+    // Insert messages
+    const messages = [
+        ['Hi, I can’t upload my invoice.', 1],
+        ['I can help you with that. Can you send a screenshot?', 0],
+        ['Here it is.', 1]
+    ];
+
+    messages.forEach(([content, user]) => {
+        db.run(
+            'INSERT INTO messages (ticket_id, content, user) VALUES (?, ?, ?)',
+            [ticketId, content, user]
+        );
+    });
+});
+
 module.exports = db;
