@@ -8,10 +8,18 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "sqlite3": "^5.1.7"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/braianricci/tom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/braianricci/tom/issues"
+  },
+  "homepage": "https://github.com/braianricci/tom#readme",
+  "description": ""
 }

@@ -55,6 +55,35 @@ app.get('/tickets/:id/messages', (req, res) => {
     );
 });
 
+// List all items with category
+app.get('/items', (req, res) => {
+    const sql = `
+        SELECT items.id, items.name AS item_name, categorias.name AS category_name
+        FROM items
+        JOIN categorias ON items.categoria_id = categorias.id
+    `;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// Get characteristics of an item
+app.get('/items/:id', (req, res) => {
+    const itemId = req.params.id;
+    const sql = `
+        SELECT caracteristicas.name AS key, item_caracteristicas.value
+        FROM item_caracteristicas
+        JOIN caracteristicas ON item_caracteristicas.caracteristica_id = caracteristicas.id
+        WHERE item_caracteristicas.item_id = ?
+    `;
+    db.all(sql, [itemId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ item_id: itemId, characteristics: rows });
+        console.log(res.json);
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
