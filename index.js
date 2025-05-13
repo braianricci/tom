@@ -57,14 +57,46 @@ app.get('/tickets/:id/messages', (req, res) => {
 
 // List all items with category
 app.get('/items', (req, res) => {
-    const sql = `
-        SELECT items.id, items.name AS item_name, categorias.name AS category_name
+    const { categoryId } = req.query;
+    let sql = `
+        SELECT 
+            items.id AS item_id, 
+            items.name AS item_name, 
+            categorias.name AS category_name,
+            caracteristicas.name AS characteristic_name,
+            item_caracteristicas.value AS characteristic_value
         FROM items
         JOIN categorias ON items.categoria_id = categorias.id
+        LEFT JOIN item_caracteristicas ON item_caracteristicas.item_id = items.id
+        LEFT JOIN caracteristicas ON caracteristicas.id = item_caracteristicas.caracteristica_id
     `;
-    db.all(sql, [], (err, rows) => {
+
+    const params = [];
+    if (categoryId) {
+        sql += ' WHERE categorias.id = ?';
+        params.push(categoryId);
+    }
+
+    db.all(sql, params, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+
+        // Group by item
+        const grouped = {};
+        rows.forEach(row => {
+            if (!grouped[row.item_id]) {
+                grouped[row.item_id] = {
+                    id: row.item_id,
+                    name: row.item_name,
+                    category: row.category_name,
+                    characteristics: {}
+                };
+            }
+            if (row.characteristic_name) {
+                grouped[row.item_id].characteristics[row.characteristic_name] = row.characteristic_value;
+            }
+        });
+
+        res.json(Object.values(grouped));
     });
 });
 
@@ -81,6 +113,14 @@ app.get('/items/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ item_id: itemId, characteristics: rows });
         console.log(res.json);
+    });
+});
+
+// Get all categories
+app.get('/categorias', (req, res) => {
+    db.all('SELECT * FROM categorias', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
     });
 });
 
