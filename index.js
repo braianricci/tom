@@ -77,6 +77,8 @@ app.get('/items', (req, res) => {
         params.push(categoryId);
     }
 
+    sql += 'ORDER BY items.id, caracteristicas.id';
+
     db.all(sql, params, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
 
