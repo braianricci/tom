@@ -78,7 +78,6 @@ function init() {
         CREATE TABLE IF NOT EXISTS items(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             categoria_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
             FOREIGN KEY(categoria_id) REFERENCES categorias(id)
         );
         CREATE TABLE IF NOT EXISTS item_caracteristicas(
@@ -86,7 +85,7 @@ function init() {
             item_id INTEGER NOT NULL,
             caracteristica_id INTEGER NOT NULL,
             value TEXT NOT NULL,
-            FOREIGN KEY(item_id) REFERENCES items(id)
+            FOREIGN KEY(item_id) REFERENCES items(id),
             FOREIGN KEY(caracteristica_id) REFERENCES caracteristicas(id)
         );
     `;
@@ -176,7 +175,6 @@ function seed() {
 
                             const pcs = [
                                 {
-                                    name: 'PC Juan',
                                     values: {
                                         'Serial': '123-ABC',
                                         'Procesador': 'Intel i5',
@@ -188,7 +186,6 @@ function seed() {
                                     }
                                 },
                                 {
-                                    name: 'PC Maria',
                                     values: {
                                         'Serial': '456-DEF',
                                         'Procesador': 'AMD Ryzen 5',
@@ -202,7 +199,7 @@ function seed() {
                             ];
 
                             pcs.forEach(pc => {
-                                db.run(`INSERT INTO items (categoria_id, name) VALUES (?, ?)`, [categoriaId, pc.name], function (err) {
+                                db.run(`INSERT INTO items (categoria_id) VALUES (?)`, [categoriaId], function (err) {
                                     if (err) return console.error('Error inserting item:', err.message);
                                     const itemId = this.lastID;
                                     rows.forEach(row => {
@@ -222,21 +219,39 @@ function seed() {
             if (err) return console.error('Error inserting categoria:', err.message);
             const categoriaId = this.lastID;
 
-            db.run(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`, [categoriaId, 'Voltaje'], function (err) {
-                if (err) return console.error('Error inserting caracteristica:', err.message);
-                const caracteristicaId = this.lastID;
+            // Insert Modelo characteristic first
+            db.run(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`, [categoriaId, 'Modelo'], function (err) {
+                if (err) return console.error('Error inserting caracteristica Modelo:', err.message);
+                const modeloId = this.lastID;
 
-                db.run(`INSERT INTO items (categoria_id, name) VALUES (?, ?)`, [categoriaId, 'Cargador Lenovo'], function (err) {
-                    if (err) return console.error('Error inserting item:', err.message);
-                    const itemId = this.lastID;
+                // Insert Voltaje characteristic second
+                db.run(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`, [categoriaId, 'Voltaje'], function (err) {
+                    if (err) return console.error('Error inserting caracteristica Voltaje:', err.message);
+                    const voltajeId = this.lastID;
 
-                    db.run(
-                        `INSERT INTO item_caracteristicas (item_id, caracteristica_id, value) VALUES (?, ?, ?)`,
-                        [itemId, caracteristicaId, '45W'],
-                        err => {
-                            if (err) return console.error('Error inserting item_caracteristica:', err.message);
-                        }
-                    );
+                    // Insert item
+                    db.run(`INSERT INTO items (categoria_id) VALUES (?)`, [categoriaId], function (err) {
+                        if (err) return console.error('Error inserting item:', err.message);
+                        const itemId = this.lastID;
+
+                        // Insert Modelo value
+                        db.run(
+                            `INSERT INTO item_caracteristicas (item_id, caracteristica_id, value) VALUES (?, ?, ?)`,
+                            [itemId, modeloId, 'Modelo XYZ'],
+                            err => {
+                                if (err) return console.error('Error inserting item_caracteristica Modelo:', err.message);
+                            }
+                        );
+
+                        // Insert Voltaje value
+                        db.run(
+                            `INSERT INTO item_caracteristicas (item_id, caracteristica_id, value) VALUES (?, ?, ?)`,
+                            [itemId, voltajeId, '45W'],
+                            err => {
+                                if (err) return console.error('Error inserting item_caracteristica Voltaje:', err.message);
+                            }
+                        );
+                    });
                 });
             });
         });

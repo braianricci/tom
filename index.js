@@ -61,7 +61,6 @@ app.get('/items', (req, res) => {
     let sql = `
         SELECT 
             items.id AS item_id, 
-            items.name AS item_name, 
             categorias.name AS category_name,
             caracteristicas.name AS characteristic_name,
             item_caracteristicas.value AS characteristic_value
@@ -86,7 +85,6 @@ app.get('/items', (req, res) => {
             if (!grouped[row.item_id]) {
                 grouped[row.item_id] = {
                     id: row.item_id,
-                    name: row.item_name,
                     category: row.category_name,
                     characteristics: {}
                 };
