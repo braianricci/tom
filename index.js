@@ -124,6 +124,43 @@ app.get('/categorias', (req, res) => {
     });
 });
 
+//agregar categoria con caracteristicas
+app.post('/categorias', (req, res) => {
+    const { name, caracteristicas } = req.body;
+    console.log('REQ BODY:', req.body);
+
+    if (!name || !Array.isArray(caracteristicas)) {
+        return res.status(400).json({ error: 'Invalid data format' });
+    }
+
+    db.serialize(() => {
+        db.run(`INSERT INTO categorias (name) VALUES (?)`, [name], function (err) {
+            if (err) {
+                console.error('Error inserting categoria:', err.message);
+                return res.status(500).json({ error: 'Error creating category' });
+            }
+
+            const categoriaId = this.lastID;
+
+            const stmt = db.prepare(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`);
+            caracteristicas.forEach(caracteristica => {
+                // extract the name property from each object
+                stmt.run(categoriaId, caracteristica.name, err => {
+                    if (err) console.error('Error inserting caracteristica:', err.message);
+                });
+            });
+            stmt.finalize(() => {
+                // After all inserts complete, send back the new category and characteristics
+                res.status(201).json({
+                    id: categoriaId,
+                    name,
+                    caracteristicas,
+                });
+            });
+        });
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
