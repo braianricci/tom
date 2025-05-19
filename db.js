@@ -20,7 +20,7 @@ function init() {
             name TEXT NOT NULL,
             description TEXT
         );
-        CREATE TABLE IF NOT EXISTS types (
+        CREATE TABLE IF NOT EXISTS types(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             description TEXT
@@ -65,28 +65,28 @@ function init() {
 
     //inventory
     schema += `
-        CREATE TABLE IF NOT EXISTS categorias (
+        CREATE TABLE IF NOT EXISTS categories(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS caracteristicas(
+        CREATE TABLE IF NOT EXISTS characteristics(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria_id INTEGER NOT NULL,
+            category_id INTEGER NOT NULL,
             name TEXT NOT NULL,
-            FOREIGN KEY(categoria_id) REFERENCES categorias(id)
+            FOREIGN KEY(category_id) REFERENCES categories(id)
         );
         CREATE TABLE IF NOT EXISTS items(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria_id INTEGER NOT NULL,
-            FOREIGN KEY(categoria_id) REFERENCES categorias(id)
+            category_id INTEGER NOT NULL,
+            FOREIGN KEY(category_id) REFERENCES categories(id)
         );
-        CREATE TABLE IF NOT EXISTS item_caracteristicas(
+        CREATE TABLE IF NOT EXISTS item_characteristics(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             item_id INTEGER NOT NULL,
-            caracteristica_id INTEGER NOT NULL,
+            characteristic_id INTEGER NOT NULL,
             value TEXT NOT NULL,
             FOREIGN KEY(item_id) REFERENCES items(id),
-            FOREIGN KEY(caracteristica_id) REFERENCES caracteristicas(id)
+            FOREIGN KEY(characteristic_id) REFERENCES characteristics(id)
         );
     `;
 
@@ -113,7 +113,7 @@ function init() {
 function seed() {
     db.serialize(() => {
         // Cleanup
-        const tables = ['comments', 'messages', 'tickets', 'states', 'types', 'agents', 'categorias', 'caracteristicas', 'items', 'item_caracteristicas'];
+        const tables = ['comments', 'messages', 'tickets', 'states', 'types', 'agents', 'categories', 'characteristics', 'items', 'item_characteristics'];
         tables.forEach(table => {
             db.run(`DELETE FROM ${table}`);
             db.run(`DELETE FROM sqlite_sequence WHERE name = ?`, [table]);
@@ -159,19 +159,19 @@ function seed() {
         });
 
         // INVENTORY - PC Category
-        db.run(`INSERT INTO categorias (name) VALUES (?)`, ['PC'], function (err) {
-            if (err) return console.error('Error inserting categoria:', err.message);
-            const categoriaId = this.lastID;
-            const caracteristicas = ['Serial', 'Procesador', 'Ram', 'Disco', 'Modelo', 'Nombre de equipo', 'Comentarios'];
+        db.run(`INSERT INTO categories (name) VALUES (?)`, ['PC'], function (err) {
+            if (err) return console.error('Error inserting category:', err.message);
+            const categoryId = this.lastID;
+            const characteristics = ['Serial', 'Procesador', 'Ram', 'Disco', 'Modelo', 'Nombre de equipo', 'Comentarios'];
             let inserted = 0;
 
-            caracteristicas.forEach(nombre => {
-                db.run(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`, [categoriaId, nombre], function (err) {
-                    if (err) return console.error('Error inserting caracteristica:', err.message);
+            characteristics.forEach(name => {
+                db.run(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`, [categoryId, name], function (err) {
+                    if (err) return console.error('Error inserting characteristic:', err.message);
                     inserted++;
-                    if (inserted === caracteristicas.length) {
-                        db.all(`SELECT id, name FROM caracteristicas WHERE categoria_id = ?`, [categoriaId], (err, rows) => {
-                            if (err) return console.error('Error selecting caracteristicas:', err.message);
+                    if (inserted === characteristics.length) {
+                        db.all(`SELECT id, name FROM characteristics WHERE category_id = ?`, [categoryId], (err, rows) => {
+                            if (err) return console.error('Error selecting chracteristics:', err.message);
 
                             const pcs = [
                                 {
@@ -199,11 +199,11 @@ function seed() {
                             ];
 
                             pcs.forEach(pc => {
-                                db.run(`INSERT INTO items (categoria_id) VALUES (?)`, [categoriaId], function (err) {
+                                db.run(`INSERT INTO items (category_id) VALUES (?)`, [categoryId], function (err) {
                                     if (err) return console.error('Error inserting item:', err.message);
                                     const itemId = this.lastID;
                                     rows.forEach(row => {
-                                        db.run(`INSERT INTO item_caracteristicas (item_id, caracteristica_id, value) VALUES (?, ?, ?)`,
+                                        db.run(`INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`,
                                             [itemId, row.id, pc.values[row.name]]);
                                     });
                                 });
@@ -215,40 +215,40 @@ function seed() {
         });
 
         // INVENTORY - Cargadores
-        db.run(`INSERT INTO categorias (name) VALUES (?)`, ['Cargadores'], function (err) {
-            if (err) return console.error('Error inserting categoria:', err.message);
-            const categoriaId = this.lastID;
+        db.run(`INSERT INTO categories (name) VALUES (?)`, ['Cargadores'], function (err) {
+            if (err) return console.error('Error inserting category:', err.message);
+            const categoryId = this.lastID;
 
             // Insert Modelo characteristic first
-            db.run(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`, [categoriaId, 'Modelo'], function (err) {
-                if (err) return console.error('Error inserting caracteristica Modelo:', err.message);
+            db.run(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`, [categoryId, 'Modelo'], function (err) {
+                if (err) return console.error('Error inserting characteristic Modelo:', err.message);
                 const modeloId = this.lastID;
 
                 // Insert Voltaje characteristic second
-                db.run(`INSERT INTO caracteristicas (categoria_id, name) VALUES (?, ?)`, [categoriaId, 'Voltaje'], function (err) {
-                    if (err) return console.error('Error inserting caracteristica Voltaje:', err.message);
+                db.run(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`, [categoryId, 'Voltaje'], function (err) {
+                    if (err) return console.error('Error inserting characteristic Voltaje:', err.message);
                     const voltajeId = this.lastID;
 
                     // Insert item
-                    db.run(`INSERT INTO items (categoria_id) VALUES (?)`, [categoriaId], function (err) {
+                    db.run(`INSERT INTO items (category_id) VALUES (?)`, [categoryId], function (err) {
                         if (err) return console.error('Error inserting item:', err.message);
                         const itemId = this.lastID;
 
                         // Insert Modelo value
                         db.run(
-                            `INSERT INTO item_caracteristicas (item_id, caracteristica_id, value) VALUES (?, ?, ?)`,
+                            `INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`,
                             [itemId, modeloId, 'Modelo XYZ'],
                             err => {
-                                if (err) return console.error('Error inserting item_caracteristica Modelo:', err.message);
+                                if (err) return console.error('Error inserting item_characteristic Modelo:', err.message);
                             }
                         );
 
                         // Insert Voltaje value
                         db.run(
-                            `INSERT INTO item_caracteristicas (item_id, caracteristica_id, value) VALUES (?, ?, ?)`,
+                            `INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`,
                             [itemId, voltajeId, '45W'],
                             err => {
-                                if (err) return console.error('Error inserting item_caracteristica Voltaje:', err.message);
+                                if (err) return console.error('Error inserting item_characteristic Voltaje:', err.message);
                             }
                         );
                     });
