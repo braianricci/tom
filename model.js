@@ -84,8 +84,8 @@ class InventoryModel {
                 const categoryId = this.lastID;
                 const stmt = db.prepare(`INSERT INTO characteristics (category_id, name) VALUES (?,? )`);
 
-                characteristics.forEach(c => {
-                    stmt.run(categoryId, c.name, err => {
+                characteristics.forEach(name => {
+                    stmt.run(categoryId, name, err => {
                         if (err) console.error('Error insertando caracteristica:', err.message);
                     });
                 });
@@ -96,6 +96,15 @@ class InventoryModel {
                 });
             })
         });
+    }
+
+    //devuelve caracteristicas de una categoria
+    getCharacteristicsByCategory(categoryId, callback) {
+        const sql = `
+            SELECT * FROM characteristics 
+            WHERE category_id = ?;
+        `;
+        this.db.all(sql, [categoryId], callback);
     }
 }
 

@@ -85,6 +85,12 @@ app.post('/categories', (req, res) => {
     InvModel.insertCategory(name, characteristics, createCallback(res));
 });
 
+//consigue las caracccteristicas de una categoria
+app.get('/characteristics', (req, res) => {
+    const { categoryId } = req.query;
+    InvModel.getCharacteristicsByCategory(categoryId, createCallback(res));
+});
+
 //crear callback general
 function createCallback(res) {
     return (err, data) => {
