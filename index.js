@@ -87,9 +87,21 @@ app.post('/categories', (req, res) => {
 
 //consigue las caracccteristicas de una categoria
 app.get('/characteristics', (req, res) => {
-    const { categoryId } = req.query;
-    InvModel.getCharacteristicsByCategory(categoryId, createCallback(res));
+    const { newItem, categoryId } = req.query;
+    InvModel.getCharacteristicsByCategory(categoryId, newItem, createCallback(res));
 });
+
+//agrega un item y sus caracteristicas
+app.post('/items', (req, res) => {
+    const { categoryId, characteristics } = req.body;
+    InvModel.insertItem(categoryId, characteristics, createCallback(res));
+});
+
+//actualiza un item y sus caracteristicas
+/*app.put('/items/:id', (req, res) => {
+
+});*/
+
 
 //crear callback general
 function createCallback(res) {

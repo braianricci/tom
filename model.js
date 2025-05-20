@@ -106,6 +106,53 @@ class InventoryModel {
         `;
         this.db.all(sql, [categoryId], callback);
     }
+
+    //agrega un item y sus caracteristicas
+    insertItem(categoryId, newItem, callback) {
+        db.serialize(() => {
+            // Step 1: Create new item
+            db.run(
+                `INSERT INTO items (category_id) VALUES (?)`,
+                [categoryId],
+                function (err) {
+                    if (err) return console.error(err);
+
+                    const itemId = this.lastID;
+
+                    // Step 2: Fetch all characteristics for the category
+                    db.all(
+                        `SELECT id, name FROM characteristics WHERE category_id = ?`,
+                        [categoryId],
+                        (err, rows) => {
+                            if (err) return console.error(err);
+
+                            const charNameToId = Object.fromEntries(rows.map(r => [r.name, r.id]));
+
+                            // Step 3: Insert item_characteristics
+                            const stmt = db.prepare(
+                                `INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`
+                            );
+
+                            for (const [name, value] of Object.entries(newItem)) {
+                                const charId = charNameToId[name];
+                                if (!charId) {
+                                    console.warn(`Characteristic "${name}" not found in category ${categoryId}`);
+                                    continue;
+                                }
+
+                                stmt.run(itemId, charId, value);
+                            }
+
+                            stmt.finalize();
+
+                            // Step 4: Run callback
+                            if (callback) callback(itemId);
+                        }
+                    );
+                }
+            );
+        });
+    }
 }
 
 module.exports = new InventoryModel();
