@@ -108,49 +108,69 @@ class InventoryModel {
     }
 
     //agrega un item y sus caracteristicas
-    insertItem(categoryId, newItem, callback) {
+    insertItem(categoryId, item, callback) {
         db.serialize(() => {
-            // Step 1: Create new item
             db.run(
                 `INSERT INTO items (category_id) VALUES (?)`,
                 [categoryId],
                 function (err) {
-                    if (err) return console.error(err);
+                    if (err) return callback(err);
 
                     const itemId = this.lastID;
 
-                    // Step 2: Fetch all characteristics for the category
                     db.all(
                         `SELECT id, name FROM characteristics WHERE category_id = ?`,
                         [categoryId],
-                        (err, rows) => {
-                            if (err) return console.error(err);
+                        (err, characteristics) => {
+                            if (err) return callback(err);
 
-                            const charNameToId = Object.fromEntries(rows.map(r => [r.name, r.id]));
+                            const stmt = db.prepare(`
+                            INSERT INTO item_characteristics (item_id, characteristic_id, value)
+                            VALUES (?, ?, ?)
+                        `);
 
-                            // Step 3: Insert item_characteristics
-                            const stmt = db.prepare(
-                                `INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`
-                            );
+                            characteristics.forEach(({ id, name }) => {
+                                stmt.run(itemId, id, item.characteristics[name] || '');
+                            });
 
-                            for (const [name, value] of Object.entries(newItem)) {
-                                const charId = charNameToId[name];
-                                if (!charId) {
-                                    console.warn(`Characteristic "${name}" not found in category ${categoryId}`);
-                                    continue;
-                                }
-
-                                stmt.run(itemId, charId, value);
-                            }
-
-                            stmt.finalize();
-
-                            // Step 4: Run callback
-                            if (callback) callback(itemId);
+                            stmt.finalize(err => {
+                                if (err) return callback(err);
+                                callback(null, {
+                                    id: itemId,
+                                    categoryId,
+                                    characteristics: item.characteristics,
+                                });
+                            });
                         }
                     );
                 }
             );
+        });
+    }
+
+    //actualiza un item
+    updateItem(itemId, newItem, callback) {
+        db.serialize(() => {
+            const stmt = db.prepare(`
+            UPDATE item_characteristics
+            SET value = ?
+            WHERE item_id = ? AND characteristic_id = (
+                SELECT id FROM characteristics WHERE name = ? AND category_id = (
+                    SELECT category_id FROM items WHERE id = ?
+                )
+            )
+        `);
+
+            for (const [key, value] of Object.entries(newItem.characteristics)) {
+                stmt.run([value, itemId, key, itemId], err => {
+                    if (err) console.error('Error updating item characteristic:', err.message);
+                });
+            }
+
+            stmt.finalize(err => {
+                if (err) return callback(err);
+                callback(null, { id: itemId, ...newItem });
+            });
         });
     }
 }
