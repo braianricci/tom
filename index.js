@@ -103,6 +103,19 @@ app.put('/items/:id', (req, res) => {
     InvModel.updateItem(itemId, updatedData, createCallback(res));
 });
 
+//borra las caracteristicas de un item
+app.delete('/item_characteristics', (req, res) => {
+    const { itemId } = req.query;
+
+    InvModel.deleteItemCharacteristics(itemId, createCallback(res));
+});
+
+//borra el item
+app.delete('/items/:id', (req, res) => {
+    const id = req.params.id;
+    InvModel.deleteItem(id, createCallback(res));
+});
+
 //crear callback general
 function createCallback(res) {
     return (err, data) => {

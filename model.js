@@ -173,6 +173,20 @@ class InventoryModel {
             });
         });
     }
+
+    deleteItemCharacteristics(itemId, callback) {
+        db.run('DELETE FROM item_characteristics WHERE item_id = ?', [itemId], (err) => {
+            if (err) return callback(err);
+            callback(null, { id: itemId });
+        });
+    }
+
+    deleteItem(id, callback) {
+        db.run('DELETE FROM items WHERE id = ?', [id], (err) => {
+            if (err) return callback(err);
+            callback(null, { id: id });
+        });
+    }
 }
 
 module.exports = new InventoryModel();
