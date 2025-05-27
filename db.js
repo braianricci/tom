@@ -1,9 +1,9 @@
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./data/support.db');
+const Database = require('better-sqlite3');
+const db = new Database('./data/support.db', { verbose: console.log });
 
 function init() {
 
-    //db.run('PRAGMA foreign_keys = ON;');
+    db.pragma('foreign_keys = ON');
 
     //tickets
     let schema = `
@@ -90,176 +90,119 @@ function init() {
         );
     `;
 
-    db.serialize(() => {
+    schema = schema.trim().split(';');
 
-        db.run('BEGIN TRANSACTION;');
-        schema.split(';').forEach(stmt => {
+    const transaction = db.transaction(() => {
+        for (const stmt of schema) {
             const trimmed = stmt.trim();
-            if (trimmed) {
-                db.run(trimmed, err => {
-                    if (err) console.error('Init error:', err.message);
-                });
-            }
-        });
-        db.run('COMMIT;');
-
-        /*db.run(schema, err => {
-            if (err) console.error('Schema error: ', err.message);
-            else console.log('Schema initialized.');
-        });*/
+            if (trimmed) db.prepare(trimmed).run();
+        }
     });
+
+    transaction();
 }
 
 function seed() {
-    db.serialize(() => {
-        // Cleanup
-        const tables = ['comments', 'messages', 'tickets', 'states', 'types', 'agents', 'categories', 'characteristics', 'items', 'item_characteristics'];
+    const transaction = db.transaction(() => {
+
+        const tables = [
+            'comments',
+            'messages',
+            'item_characteristics',
+            'items',
+            'characteristics',
+            'tickets',
+            'agents',
+            'states',
+            'types',
+            'categories'
+        ];
+
         tables.forEach(table => {
-            db.run(`DELETE FROM ${table}`);
-            db.run(`DELETE FROM sqlite_sequence WHERE name = ?`, [table]);
+            db.prepare(`DELETE FROM ${table}`).run();
+            db.prepare(`DELETE FROM sqlite_sequence WHERE name = ?`).run(table);
         });
 
-        // Agents
+        const insertAgent = db.prepare(`INSERT INTO agents (name, number, login, hash, admin) VALUES (?, ?, ?, ?, ?)`);
         ['Braian', 'Ignacio', 'Damian'].forEach(name => {
-            db.run(`INSERT INTO agents (name, number, login, hash, admin) VALUES (?, ?, ?, ?, ?)`,
-                [name, '+1234567890', name.toLowerCase(), 'hash123', true]);
+            insertAgent.run(name, '+1234567890', name.toLowerCase(), 'hash123', 1);
         });
 
-        // States
-        ['Abierto', 'En espera', 'Cerrado'].forEach(name => {
-            db.run(`INSERT INTO states (name, description) VALUES (?, ?)`, [name, null]);
-        });
+        const insertState = db.prepare(`INSERT INTO states (name, description) VALUES (?, ?)`);
+        ['Abierto', 'En espera', 'Cerrado'].forEach(name => insertState.run(name, null));
 
-        // Types
-        ['Incidente', 'Solicitud de reparacion', 'Alta de equipo'].forEach(name => {
-            db.run(`INSERT INTO types (name, description) VALUES (?, ?)`, [name, null]);
-        });
+        const insertType = db.prepare(`INSERT INTO types (name, description) VALUES (?, ?)`);
+        ['Incidente', 'Solicitud de reparacion', 'Alta de equipo'].forEach(name => insertType.run(name, null));
 
-        // Tickets (after inserts)
-        db.get(`SELECT id, name FROM agents WHERE name = 'Braian'`, (err, agent) => {
-            db.get(`SELECT id FROM types WHERE name = 'Incidente'`, (err, type) => {
-                db.get(`SELECT id FROM states WHERE name = 'Abierto'`, (err, state) => {
-                    db.run(`INSERT INTO tickets (chatId, userNumber, agent_id, agent_name, user, title, description, type_id, state_id)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        ['chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id],
-                        function (err) {
-                            const ticketId = this.lastID;
-                            for (let i = 0; i < 10; i++) {
-                                const user = i % 2 === 0 ? 1 : 0;
-                                db.run(`INSERT INTO messages (ticket_id, user, content, includes_media) VALUES (?, ?, ?, ?)`,
-                                    [ticketId, user, `Mensaje ${i + 1}`, false]);
-                            }
-                            for (let i = 0; i < 2; i++) {
-                                db.run(`INSERT INTO comments (ticket_id, body, agent_id, agent_name) VALUES (?, ?, ?, ?)`,
-                                    [ticketId, `Comentario ${i + 1}`, agent.id, agent.name]);
-                            }
-                        });
-                });
+        const agent = db.prepare(`SELECT id, name FROM agents WHERE name = ?`).get('Braian');
+        const type = db.prepare(`SELECT id FROM types WHERE name = ?`).get('Incidente');
+        const state = db.prepare(`SELECT id FROM states WHERE name = ?`).get('Abierto');
+
+        const insertTicket = db.prepare(`INSERT INTO tickets (chatId, userNumber, agent_id, agent_name, user, title, description, type_id, state_id)
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        const ticketResult = insertTicket.run('chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id);
+        const ticketId = ticketResult.lastInsertRowid;
+
+        const insertMsg = db.prepare(`INSERT INTO messages (ticket_id, user, content, includes_media) VALUES (?, ?, ?, ?)`);
+        for (let i = 0; i < 10; i++) insertMsg.run(ticketId, i % 2 === 0 ? 1 : 0, `Mensaje ${i + 1}`, 0);
+
+        const insertComment = db.prepare(`INSERT INTO comments (ticket_id, body, agent_id, agent_name) VALUES (?, ?, ?, ?)`);
+        for (let i = 0; i < 2; i++) insertComment.run(ticketId, `Comentario ${i + 1}`, agent.id, agent.name);
+
+        const insertCategory = db.prepare(`INSERT INTO categories (name) VALUES (?)`);
+        const categoryResult = insertCategory.run('PC');
+        const categoryId = categoryResult.lastInsertRowid;
+
+        const characteristics = ['Serial', 'Procesador', 'Ram', 'Disco', 'Modelo', 'Nombre de equipo', 'Comentarios'];
+        const insertCharacteristic = db.prepare(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`);
+        characteristics.forEach(name => insertCharacteristic.run(categoryId, name));
+
+        const chars = db.prepare(`SELECT id, name FROM characteristics WHERE category_id = ?`).all(categoryId);
+        const insertItem = db.prepare(`INSERT INTO items (category_id) VALUES (?)`);
+        const insertItemChar = db.prepare(`INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`);
+
+        const pcs = [
+            {
+                'Serial': '123-ABC',
+                'Procesador': 'Intel i5',
+                'Ram': '16GB',
+                'Disco': '512GB SSD',
+                'Modelo': 'HP EliteDesk 800',
+                'Nombre de equipo': 'PC-JUAN',
+                'Comentarios': 'Equipo asignado a Juan Pérez'
+            },
+            {
+                'Serial': '456-DEF',
+                'Procesador': 'AMD Ryzen 5',
+                'Ram': '8GB',
+                'Disco': '256GB SSD',
+                'Modelo': 'Dell OptiPlex 7070',
+                'Nombre de equipo': 'PC-MARIA',
+                'Comentarios': 'Equipo asignado a María López'
+            }
+        ];
+
+        pcs.forEach(values => {
+            const itemId = insertItem.run(categoryId).lastInsertRowid;
+            chars.forEach(({ id, name }) => {
+                insertItemChar.run(itemId, id, values[name]);
             });
         });
 
-        // INVENTORY - PC Category
-        db.run(`INSERT INTO categories (name) VALUES (?)`, ['PC'], function (err) {
-            if (err) return console.error('Error inserting category:', err.message);
-            const categoryId = this.lastID;
-            const characteristics = ['Serial', 'Procesador', 'Ram', 'Disco', 'Modelo', 'Nombre de equipo', 'Comentarios'];
-            let inserted = 0;
+        // Cargadores
+        const cargadoresId = insertCategory.run('Cargadores').lastInsertRowid;
+        const modeloId = insertCharacteristic.run(cargadoresId, 'Modelo').lastInsertRowid;
+        const voltajeId = insertCharacteristic.run(cargadoresId, 'Voltaje').lastInsertRowid;
 
-            characteristics.forEach(name => {
-                db.run(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`, [categoryId, name], function (err) {
-                    if (err) return console.error('Error inserting characteristic:', err.message);
-                    inserted++;
-                    if (inserted === characteristics.length) {
-                        db.all(`SELECT id, name FROM characteristics WHERE category_id = ?`, [categoryId], (err, rows) => {
-                            if (err) return console.error('Error selecting chracteristics:', err.message);
-
-                            const pcs = [
-                                {
-                                    values: {
-                                        'Serial': '123-ABC',
-                                        'Procesador': 'Intel i5',
-                                        'Ram': '16GB',
-                                        'Disco': '512GB SSD',
-                                        'Modelo': 'HP EliteDesk 800',
-                                        'Nombre de equipo': 'PC-JUAN',
-                                        'Comentarios': 'Equipo asignado a Juan Pérez'
-                                    }
-                                },
-                                {
-                                    values: {
-                                        'Serial': '456-DEF',
-                                        'Procesador': 'AMD Ryzen 5',
-                                        'Ram': '8GB',
-                                        'Disco': '256GB SSD',
-                                        'Modelo': 'Dell OptiPlex 7070',
-                                        'Nombre de equipo': 'PC-MARIA',
-                                        'Comentarios': 'Equipo asignado a María López'
-                                    }
-                                }
-                            ];
-
-                            pcs.forEach(pc => {
-                                db.run(`INSERT INTO items (category_id) VALUES (?)`, [categoryId], function (err) {
-                                    if (err) return console.error('Error inserting item:', err.message);
-                                    const itemId = this.lastID;
-                                    rows.forEach(row => {
-                                        db.run(`INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`,
-                                            [itemId, row.id, pc.values[row.name]]);
-                                    });
-                                });
-                            });
-                        });
-                    }
-                });
-            });
-        });
-
-        // INVENTORY - Cargadores
-        db.run(`INSERT INTO categories (name) VALUES (?)`, ['Cargadores'], function (err) {
-            if (err) return console.error('Error inserting category:', err.message);
-            const categoryId = this.lastID;
-
-            // Insert Modelo characteristic first
-            db.run(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`, [categoryId, 'Modelo'], function (err) {
-                if (err) return console.error('Error inserting characteristic Modelo:', err.message);
-                const modeloId = this.lastID;
-
-                // Insert Voltaje characteristic second
-                db.run(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`, [categoryId, 'Voltaje'], function (err) {
-                    if (err) return console.error('Error inserting characteristic Voltaje:', err.message);
-                    const voltajeId = this.lastID;
-
-                    // Insert item
-                    db.run(`INSERT INTO items (category_id) VALUES (?)`, [categoryId], function (err) {
-                        if (err) return console.error('Error inserting item:', err.message);
-                        const itemId = this.lastID;
-
-                        // Insert Modelo value
-                        db.run(
-                            `INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`,
-                            [itemId, modeloId, 'Modelo XYZ'],
-                            err => {
-                                if (err) return console.error('Error inserting item_characteristic Modelo:', err.message);
-                            }
-                        );
-
-                        // Insert Voltaje value
-                        db.run(
-                            `INSERT INTO item_characteristics (item_id, characteristic_id, value) VALUES (?, ?, ?)`,
-                            [itemId, voltajeId, '45W'],
-                            err => {
-                                if (err) return console.error('Error inserting item_characteristic Voltaje:', err.message);
-                            }
-                        );
-                    });
-                });
-            });
-        });
+        const cargadorItemId = insertItem.run(cargadoresId).lastInsertRowid;
+        insertItemChar.run(cargadorItemId, modeloId, 'Modelo XYZ');
+        insertItemChar.run(cargadorItemId, voltajeId, '45W');
     });
+
+    transaction();
 }
 
-module.exports = {
-    db,
-    init,
-    seed
-};
+init();
+seed();
+
+module.exports = db;

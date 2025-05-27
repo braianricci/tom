@@ -1,130 +1,131 @@
 const express = require('express');
 const cors = require('cors');
-const InvModel = require('./model.js');
+const InvModel = require('./invModel.js');
+const TicModel = require('./ticModel.js');
+const db = require('./db'); // assuming your better-sqlite3 db instance is exported here
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
 
-// Create a ticket
+/*------------------------------- Tickets ---------------------------------*/
+
+app.get('/tickets', (req, res) => {
+    const fn = () => TicModel.getTickets();
+
+    handleRequest(res, fn, 'Fallo GET /tickets');
+});
+
+/*----------------------------------------------------------------*/
+
 app.post('/tickets', (req, res) => {
     const { title } = req.body;
-    db.run('INSERT INTO tickets (title) VALUES (?)', [title], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID });
-    });
+    handleRequest(res, () => {
+        const stmt = db.prepare('INSERT INTO tickets (title) VALUES (?)');
+        const info = stmt.run(title);
+        return { id: info.lastInsertRowid };
+    }, 'Failed to create ticket');
 });
 
-// Get all tickets
-app.get('/tickets', (req, res) => {
-    db.all('SELECT * FROM tickets ORDER BY created_at DESC', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
-});
-
-// Add a message to a ticket
 app.post('/tickets/:id/messages', (req, res) => {
     const { content } = req.body;
     const ticketId = req.params.id;
-    db.run(
-        'INSERT INTO messages (ticket_id, content) VALUES (?, ?)',
-        [ticketId, content],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID });
-        }
-    );
+    handleRequest(res, () => {
+        const stmt = db.prepare('INSERT INTO messages (ticket_id, content, user, includes_media) VALUES (?, ?, ?, ?)');
+        // assuming user and includes_media fields required - default 0 for user (agent) and false for includes_media
+        const info = stmt.run(ticketId, content, 0, 0);
+        return { id: info.lastInsertRowid };
+    }, 'Failed to add message');
 });
 
-// Get messages for a ticket
 app.get('/tickets/:id/messages', (req, res) => {
     const ticketId = req.params.id;
-    db.all(
-        'SELECT * FROM messages WHERE ticket_id = ? ORDER BY created_at ASC',
-        [ticketId],
-        (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        }
-    );
+    handleRequest(res, () => {
+        return db.prepare('SELECT * FROM messages WHERE ticket_id = ? ORDER BY created_at ASC').all(ticketId);
+    }, 'Failed to get messages');
 });
 
-//------------------------------------------------------------------------------------------
+/*------------------------------- Inventory ---------------------------------*/
 
-// List all items with category
 app.get('/items', (req, res) => {
     const { categoryId } = req.query;
-    InvModel.getItemsByCategory(categoryId, createCallback(res));
+    const fn = () => InvModel.getItemsByCategory(categoryId);
+
+    handleRequest(res, fn, 'Fallo GET /items');
 });
 
-//consigue las caracteristicas de un item 
 app.get('/items/:id', (req, res) => {
     const itemId = req.params.id;
-    InvModel.getItemCharacteristics(itemId, createCallback(res));
+    const fn = () => InvModel.getItemCharacteristics(itemId);
+
+    handleRequest(res, fn, 'Fallo GET /items/:id');
 });
 
-//consigue las categorias
 app.get('/categories', (req, res) => {
-    InvModel.getCategories(createCallback(res));
+    const fn = () => InvModel.getCategories();
+
+    handleRequest(res, fn, 'Fallo GET /categories');
 });
 
-//agrega categoria con caracteristicas
 app.post('/categories', (req, res) => {
     const { name, characteristics } = req.body;
-
-    //se asegura de recibir la data correcta
     if (!name || !Array.isArray(characteristics)) {
         return res.status(400).json({ error: 'Error de data format' });
     }
 
-    //pasamos la data al modelo
-    InvModel.insertCategory(name, characteristics, createCallback(res));
+    const fn = () => InvModel.insertCategory(name, characteristics);
+    handleRequest(res, fn, 'Fallo POST /categories');
 });
 
-//consigue las caracccteristicas de una categoria
 app.get('/characteristics', (req, res) => {
     const { categoryId } = req.query;
-    InvModel.getCharacteristicsByCategory(categoryId, createCallback(res));
+    const fn = () => InvModel.getCharacteristicsByCategory(categoryId);
+
+    handleRequest(res, fn, 'Fallo GET /characteristics');
 });
 
-//agrega un item y sus caracteristicas
 app.post('/items', (req, res) => {
     const { categoryId, characteristics } = req.body;
-    InvModel.insertItem(categoryId, { characteristics }, createCallback(res));
+    const fn = () => InvModel.insertItem(categoryId, { characteristics });
+
+    handleRequest(res, fn, 'Fallo POST /items');
 });
 
-//actualiza un item y sus caracteristicas
 app.put('/items/:id', (req, res) => {
     const itemId = req.params.id;
-    const updatedData = req.body; // ya no espera "newItem", toma todo el body
+    const updatedData = req.body;
+    const fn = () => InvModel.updateItem(itemId, updatedData);
 
-    InvModel.updateItem(itemId, updatedData, createCallback(res));
+    handleRequest(res, fn, 'Fallo PUT /items/:id');
 });
 
-//borra las caracteristicas de un item
 app.delete('/item_characteristics', (req, res) => {
     const { itemId } = req.query;
+    const fn = () => InvModel.deleteItemCharacteristics(itemId);
 
-    InvModel.deleteItemCharacteristics(itemId, createCallback(res));
+    handleRequest(res, fn, 'Fallo DELETE /item_characteristics');
 });
 
-//borra el item
 app.delete('/items/:id', (req, res) => {
     const id = req.params.id;
-    InvModel.deleteItem(id, createCallback(res));
+    const fn = () => InvModel.deleteItem(id);
+
+    handleRequest(res, fn, 'Fallo DELETE /items/:id');
 });
 
-//crear callback general
-function createCallback(res) {
-    return (err, data) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(data);
-    };
+/*------------------------------- General ---------------------------------*/
+
+function handleRequest(res, fn, errorMessage = 'Error interno del servidor') {
+    try {
+        const result = fn();
+        res.json(result);
+    } catch (err) {
+        console.error(errorMessage, err);
+        res.status(500).json({ error: errorMessage });
+    }
 }
 
-//escucha en el puerto designado
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
