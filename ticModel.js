@@ -7,9 +7,14 @@ class TicketModel {
     }
 
     //devuelve todas los tickets
-    getTickets() {
-        const stmt = this.db.prepare('SELECT * FROM tickets');
-        return stmt.all();
+    getTickets(limit = 10, offset = 0) {
+        const stmt = this.db.prepare(`
+        SELECT * FROM tickets
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    `);
+
+        return stmt.all(limit, offset);
     }
 }
 

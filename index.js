@@ -12,9 +12,11 @@ app.use(express.json());
 /*------------------------------- Tickets ---------------------------------*/
 
 app.get('/tickets', (req, res) => {
-    const fn = () => TicModel.getTickets();
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
 
-    handleRequest(res, fn, 'Fallo GET /tickets');
+    const tickets = TicModel.getTickets(limit, offset);
+    res.json(tickets);
 });
 
 /*----------------------------------------------------------------*/
