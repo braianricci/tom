@@ -104,7 +104,6 @@ function init() {
 
 function seed() {
     const transaction = db.transaction(() => {
-
         const tables = [
             'comments',
             'messages',
@@ -140,6 +139,7 @@ function seed() {
 
         const insertTicket = db.prepare(`INSERT INTO tickets (chatId, userNumber, agent_id, agent_name, user, title, description, type_id, state_id)
                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+
         const ticketResult = insertTicket.run('chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id);
         const ticketId = ticketResult.lastInsertRowid;
 
@@ -149,12 +149,31 @@ function seed() {
         const insertComment = db.prepare(`INSERT INTO comments (ticket_id, body, agent_id, agent_name) VALUES (?, ?, ?, ?)`);
         for (let i = 0; i < 2; i++) insertComment.run(ticketId, `Comentario ${i + 1}`, agent.id, agent.name);
 
+        // Extra tickets
+        for (let i = 1; i <= 20; i++) {
+            const t = insertTicket.run(
+                `chat00${i + 1}`,
+                `+543210000${i}`,
+                agent.id,
+                agent.name,
+                `Usuario ${i}`,
+                `Problema #${i}`,
+                `Descripción del problema número ${i}`,
+                type.id,
+                state.id
+            ).lastInsertRowid;
+
+            insertMsg.run(t, 1, `Mensaje inicial del ticket ${i}`, 0);
+        }
+
+        // Inventory (unchanged)
         const insertCategory = db.prepare(`INSERT INTO categories (name) VALUES (?)`);
         const categoryResult = insertCategory.run('PC');
         const categoryId = categoryResult.lastInsertRowid;
 
         const characteristics = ['Serial', 'Procesador', 'Ram', 'Disco', 'Modelo', 'Nombre de equipo', 'Comentarios'];
         const insertCharacteristic = db.prepare(`INSERT INTO characteristics (category_id, name) VALUES (?, ?)`);
+
         characteristics.forEach(name => insertCharacteristic.run(categoryId, name));
 
         const chars = db.prepare(`SELECT id, name FROM characteristics WHERE category_id = ?`).all(categoryId);
