@@ -137,10 +137,10 @@ function seed() {
         const type = db.prepare(`SELECT id FROM types WHERE name = ?`).get('Incidente');
         const state = db.prepare(`SELECT id FROM states WHERE name = ?`).get('Abierto');
 
-        const insertTicket = db.prepare(`INSERT INTO tickets (chatId, userNumber, agent_id, agent_name, user, title, description, type_id, state_id)
-                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        const insertTicket = db.prepare(`INSERT INTO tickets (chatId, userNumber, agent_id, agent_name, user, title, description, type_id, state_id, created_at)
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-        const ticketResult = insertTicket.run('chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id);
+        const ticketResult = insertTicket.run('chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id, '2024-04-17 14:23:00');
         const ticketId = ticketResult.lastInsertRowid;
 
         const insertMsg = db.prepare(`INSERT INTO messages (ticket_id, user, content, includes_media) VALUES (?, ?, ?, ?)`);
@@ -150,7 +150,10 @@ function seed() {
         for (let i = 0; i < 2; i++) insertComment.run(ticketId, `Comentario ${i + 1}`, agent.id, agent.name);
 
         // Extra tickets
-        for (let i = 1; i <= 20; i++) {
+        for (let i = 1; i <= 100; i++) {
+            const day = 1 + Math.floor((i - 1) / 4); // Every 4 tickets, advance one day
+            const date = `2024-05-${String(day).padStart(2, '0')} 10:00:00`; // Fixed time, padded day
+
             const t = insertTicket.run(
                 `chat00${i + 1}`,
                 `+543210000${i}`,
@@ -160,7 +163,8 @@ function seed() {
                 `Problema #${i}`,
                 `Descripción del problema número ${i}`,
                 type.id,
-                state.id
+                state.id,
+                date
             ).lastInsertRowid;
 
             insertMsg.run(t, 1, `Mensaje inicial del ticket ${i}`, 0);
