@@ -150,7 +150,7 @@ function seed() {
         for (let i = 0; i < 2; i++) insertComment.run(ticketId, `Comentario ${i + 1}`, agent.id, agent.name);
 
         // Extra tickets
-        for (let i = 1; i <= 100; i++) {
+        for (let i = 1; i <= 400; i++) {
             const day = 1 + Math.floor((i - 1) / 4); // Every 4 tickets, advance one day
             const date = `2024-05-${String(day).padStart(2, '0')} 10:00:00`; // Fixed time, padded day
 
