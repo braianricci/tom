@@ -48,7 +48,7 @@ function init() {
             content TEXT NOT NULL,
             includes_media BOOLEAN NOT NULL,
             media_path TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            sent_at DATETIME NOT NULL,
             FOREIGN KEY(ticket_id) REFERENCES tickets(id) 
         );
         CREATE TABLE IF NOT EXISTS comments (
@@ -143,8 +143,8 @@ function seed() {
         const ticketResult = insertTicket.run('chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id, '2024-04-17 14:23:00');
         const ticketId = ticketResult.lastInsertRowid;
 
-        const insertMsg = db.prepare(`INSERT INTO messages (ticket_id, user, content, includes_media) VALUES (?, ?, ?, ?)`);
-        for (let i = 0; i < 10; i++) insertMsg.run(ticketId, i % 2 === 0 ? 1 : 0, `Mensaje ${i + 1}`, 0);
+        const insertMsg = db.prepare(`INSERT INTO messages (ticket_id, user, content, includes_media, sent_at) VALUES (?, ?, ?, ?, ?)`);
+        for (let i = 0; i < 10; i++) insertMsg.run(ticketId, i % 2 === 0 ? 1 : 0, `Mensaje ${i + 1}`, 0, `2025-06-06T09:32:45`);
 
         const insertComment = db.prepare(`INSERT INTO comments (ticket_id, body, agent_id, agent_name) VALUES (?, ?, ?, ?)`);
         for (let i = 0; i < 2; i++) insertComment.run(ticketId, `Comentario ${i + 1}`, agent.id, agent.name);
@@ -167,7 +167,7 @@ function seed() {
                 date
             ).lastInsertRowid;
 
-            insertMsg.run(t, 1, `Mensaje inicial del ticket ${i}`, 0);
+            insertMsg.run(t, 1, `Mensaje inicial del ticket ${i}`, 0, `2025-06-06T09:32:45`);
         }
 
         // Inventory (unchanged)

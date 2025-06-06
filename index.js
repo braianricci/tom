@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const InvModel = require('./invModel.js');
-const TicModel = require('./ticModel.js');
+const InvModel = require('./modelInv.js');
+const TicModel = require('./modelTic.js');
 const db = require('./db'); // assuming your better-sqlite3 db instance is exported here
 const app = express();
 const PORT = 3001;
@@ -11,7 +11,7 @@ app.use(express.json());
 
 /*------------------------------- Tickets ---------------------------------*/
 
-app.get('/tickets', (req, res) => {
+app.get('/tickets', (req, res) => {                     //NOT FINAL
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
 
@@ -19,16 +19,14 @@ app.get('/tickets', (req, res) => {
     res.json(tickets);
 });
 
-/*----------------------------------------------------------------*/
-
 app.post('/tickets', (req, res) => {
-    const { title } = req.body;
-    handleRequest(res, () => {
-        const stmt = db.prepare('INSERT INTO tickets (title) VALUES (?)');
-        const info = stmt.run(title);
-        return { id: info.lastInsertRowid };
-    }, 'Failed to create ticket');
+    const data = req.body;
+    const fn = () => TicModel.insertFullTicket(data);
+
+    handleRequest(res, fn, 'Fallo POST /tickets');
 });
+
+/*----------------------------------------------------------------*/
 
 app.post('/tickets/:id/messages', (req, res) => {
     const { content } = req.body;
