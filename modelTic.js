@@ -11,8 +11,8 @@ class TicketModel {
         const stmt = this.db.prepare(`
             SELECT 
                 tickets.id,
-                tickets.chatId,
-                tickets.userNumber,
+                tickets.chat_id,
+                tickets.user_number,
                 tickets.user,
                 tickets.title,
                 tickets.description,
@@ -35,6 +35,8 @@ class TicketModel {
     insertFullTicket(data) {
         const now = new Date().toISOString();
 
+        console.log(data);
+
         const insertTicket = db.prepare(`
             INSERT INTO tickets (
                 chat_id, user_number, agent_id, agent_name, user,
@@ -56,8 +58,8 @@ class TicketModel {
 
         const tx = db.transaction(({ ticket, messages, comments }) => {
             const result = insertTicket.run(
-                ticket.chatId,
-                ticket.userNumber,
+                ticket.chat_id ?? null,
+                ticket.userNumber ?? null,
                 ticket.agent_id,
                 ticket.agent_name,
                 ticket.user,
@@ -94,6 +96,16 @@ class TicketModel {
         });
 
         return tx(data);
+    }
+
+    getStates() {
+        const stmt = this.db.prepare(`SELECT id, name FROM states ORDER BY id ASC`);
+        return stmt.all();
+    }
+
+    getTypes() {
+        const stmt = this.db.prepare(`SELECT id, name FROM types ORDER BY id ASC`);
+        return stmt.all();
     }
 }
 

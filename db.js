@@ -27,15 +27,15 @@ function init() {
         );
         CREATE TABLE IF NOT EXISTS tickets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chatId TEXT NOT NULL,
-            userNumber TEXT NOT NULL,
+            chat_id TEXT,
+            user_number TEXT,
             agent_id INTEGER NOT NULL,
             agent_name TEXT NOT NULL,
             user TEXT NOT NULL,
             title TEXT NOT NULL,
-            description TEXT,
-            type_id INTEGER,
-            state_id INTEGER,
+            description TEXT NOT NULL,
+            type_id INTEGER NOT NULL,
+            state_id INTEGER NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(agent_id) REFERENCES agents(id),
             FOREIGN KEY(type_id) REFERENCES types(id),
@@ -131,13 +131,13 @@ function seed() {
         ['Abierto', 'En espera', 'Cerrado'].forEach(name => insertState.run(name, null));
 
         const insertType = db.prepare(`INSERT INTO types (name, description) VALUES (?, ?)`);
-        ['Incidente', 'Solicitud de reparacion', 'Alta de equipo'].forEach(name => insertType.run(name, null));
+        ['Incidente', 'Alta de equipo', 'Solicitud de reparacion'].forEach(name => insertType.run(name, null));
 
         const agent = db.prepare(`SELECT id, name FROM agents WHERE name = ?`).get('Braian');
         const type = db.prepare(`SELECT id FROM types WHERE name = ?`).get('Incidente');
         const state = db.prepare(`SELECT id FROM states WHERE name = ?`).get('Abierto');
 
-        const insertTicket = db.prepare(`INSERT INTO tickets (chatId, userNumber, agent_id, agent_name, user, title, description, type_id, state_id, created_at)
+        const insertTicket = db.prepare(`INSERT INTO tickets (chat_id, user_number, agent_id, agent_name, user, title, description, type_id, state_id, created_at)
                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
         const ticketResult = insertTicket.run('chat001', '+5432167890', agent.id, agent.name, 'Carlos', 'No enciende', 'La PC no prende desde ayer', type.id, state.id, '2024-04-17 14:23:00');
