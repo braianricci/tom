@@ -26,8 +26,8 @@ app.post('/tickets', (req, res) => {
     handleRequest(res, fn, 'Fallo POST /tickets');
 });
 
-const fn = () => TicModel.getStates();
 app.get('/states', (req, res) => {
+    const fn = () => TicModel.getStates();
 
     handleRequest(res, fn, 'Fallo GET /states');
 });
@@ -36,6 +36,12 @@ app.get('/types', (req, res) => {
     const fn = () => TicModel.getTypes();
 
     handleRequest(res, fn, 'Fallo GET /types');
+});
+
+app.get('/agents', (req, res) => {
+    const fn = () => TicModel.getAgents();
+
+    handleRequest(res, fn, 'Fallo GET /agents');
 });
 
 /*----------------------------------------------------------------*/

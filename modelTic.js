@@ -107,6 +107,11 @@ class TicketModel {
         const stmt = this.db.prepare(`SELECT id, name FROM types ORDER BY id ASC`);
         return stmt.all();
     }
+
+    getAgents() {
+        const stmt = this.db.prepare(`SELECT id, name FROM agents ORDER BY id ASC`);
+        return stmt.all();
+    }
 }
 
 module.exports = new TicketModel();
