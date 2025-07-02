@@ -35,33 +35,54 @@ class TicketModel {
     insertFullTicket(data) {
         const now = new Date().toISOString();
 
-        console.log(data);
-
         const insertTicket = db.prepare(`
-            INSERT INTO tickets (
-                chat_id, user_number, agent_id, agent_name, user,
-                title, description, type_id, state_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+        INSERT INTO tickets (
+            chat_id, user_number, agent_id, agent_name, user,
+            title, description, type_id, state_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
         const insertMessage = db.prepare(`
-            INSERT INTO messages (
-                ticket_id, user, content, includes_media, media_path, sent_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        `);
+        INSERT INTO messages (
+            ticket_id, user, content, includes_media, media_path, sent_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+    `);
 
         const insertComment = db.prepare(`
-            INSERT INTO comments (
-                ticket_id, agent_id, agent_name, body, created_at
-            ) VALUES (?, ?, ?, ?, ?)
-        `);
+        INSERT INTO comments (
+            ticket_id, agent_id, agent_name, body, created_at
+        ) VALUES (?, ?, ?, ?, ?)
+    `);
+
+        const getFullTicket = db.prepare(`
+        SELECT 
+            tickets.id,
+            tickets.chat_id,
+            tickets.user_number,
+            tickets.agent_id,
+            tickets.agent_name,
+            tickets.user,
+            tickets.title,
+            tickets.description,
+            tickets.created_at,
+            states.name AS state_name,
+            types.name AS type_name
+        FROM tickets
+        LEFT JOIN states ON tickets.state_id = states.id
+        LEFT JOIN types ON tickets.type_id = types.id
+        WHERE tickets.id = ?
+    `);
 
         const tx = db.transaction(({ ticket, messages, comments }) => {
+            const getAgentNameById = db.prepare('SELECT name FROM agents WHERE id = ?');
+            const agentRow = getAgentNameById.get(ticket.agent_id);
+            const agentName = agentRow?.name || 'Desconocido';
+
             const result = insertTicket.run(
                 ticket.chat_id ?? null,
                 ticket.userNumber ?? null,
                 ticket.agent_id,
-                ticket.agent_name,
+                agentName,
                 ticket.user,
                 ticket.title,
                 ticket.description,
@@ -92,7 +113,7 @@ class TicketModel {
                 );
             }
 
-            return ticketId;
+            return getFullTicket.get(ticketId);
         });
 
         return tx(data);

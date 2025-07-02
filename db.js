@@ -25,6 +25,11 @@ function init() {
             name TEXT NOT NULL,
             description TEXT
         );
+        CREATE TABLE IF NOT EXISTS uens(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uen TEXT NOT NULL,
+            local TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS tickets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             chat_id TEXT,
