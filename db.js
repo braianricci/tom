@@ -95,6 +95,23 @@ function init() {
         );
     `;
 
+    //users
+    schema += `
+        CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY AUTOINCREMENTE,
+            user TEXT NOT NULL,
+            uen_id INTEGER NOT NULL,
+            area TEXT NOT NULL,
+            charge TEXT,
+            mail TEXT NOT NULL,
+            pc_id INTEGER,
+            phone_id INTEGER,
+            FOREIGN KEY(uen_id) REFERENCES uens(id),
+            FOREIGN KEY(pc_id) REFERENCES items(id),
+            FOREIGN KEY(phone_id) REFERENCES items(id)
+        );
+    `;
+
     schema = schema.trim().split(';');
 
     const transaction = db.transaction(() => {
@@ -110,6 +127,7 @@ function init() {
 function seed() {
     const transaction = db.transaction(() => {
         const tables = [
+            'users',
             'comments',
             'messages',
             'item_characteristics',
@@ -118,6 +136,7 @@ function seed() {
             'tickets',
             'agents',
             'states',
+            'uens',
             'types',
             'categories'
         ];
